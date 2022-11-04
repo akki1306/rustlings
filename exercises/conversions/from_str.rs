@@ -6,6 +6,7 @@
 // You can read more about it at https://doc.rust-lang.org/std/str/trait.FromStr.html
 // Execute `rustlings hint from_str` or use the `hint` watch subcommand for a hint.
 
+use ParsePersonError::{BadLen, Empty, NoName, ParseInt};
 use std::num::ParseIntError;
 use std::str::FromStr;
 
@@ -28,8 +29,6 @@ enum ParsePersonError {
     ParseInt(ParseIntError),
 }
 
-// I AM NOT DONE
-
 // Steps:
 // 1. If the length of the provided string is 0, an error should be returned
 // 2. Split the given string on the commas present in it
@@ -46,8 +45,32 @@ enum ParsePersonError {
 impl FromStr for Person {
     type Err = ParsePersonError;
     fn from_str(s: &str) -> Result<Person, Self::Err> {
+        let mut err: Option<ParsePersonError> = None;
+
+        let split: Vec<&str> = s.split(",").collect();
+
+        if s.is_empty() {
+            err = Some(Empty);
+        } else if split.len() != 2 {
+            err = Some(BadLen);
+        } else if split[0].len() == 0 {
+            err = Some(NoName);
+        } else {
+            let person_age: Result<usize, _> = split[1].parse();
+            if let Err(ref e) = person_age {
+                err = Some(ParseInt(e.clone()));
+            } else {
+                return Ok(Person {
+                    name: split[0].into(),
+                    age: person_age.unwrap(),
+                });
+            }
+        }
+
+        Err(err.unwrap())
     }
 }
+
 
 fn main() {
     let p = "Mark,20".parse::<Person>().unwrap();
@@ -60,8 +83,9 @@ mod tests {
 
     #[test]
     fn empty_input() {
-        assert_eq!("".parse::<Person>(), Err(ParsePersonError::Empty));
+        assert_eq!("".parse::<Person>(), Err(Empty));
     }
+
     #[test]
     fn good_input() {
         let p = "John,32".parse::<Person>();
@@ -70,6 +94,7 @@ mod tests {
         assert_eq!(p.name, "John");
         assert_eq!(p.age, 32);
     }
+
     #[test]
     fn missing_age() {
         assert!(matches!(
@@ -88,12 +113,12 @@ mod tests {
 
     #[test]
     fn missing_comma_and_age() {
-        assert_eq!("John".parse::<Person>(), Err(ParsePersonError::BadLen));
+        assert_eq!("John".parse::<Person>(), Err(BadLen));
     }
 
     #[test]
     fn missing_name() {
-        assert_eq!(",1".parse::<Person>(), Err(ParsePersonError::NoName));
+        assert_eq!(",1".parse::<Person>(), Err(NoName));
     }
 
     #[test]
@@ -114,14 +139,14 @@ mod tests {
 
     #[test]
     fn trailing_comma() {
-        assert_eq!("John,32,".parse::<Person>(), Err(ParsePersonError::BadLen));
+        assert_eq!("John,32,".parse::<Person>(), Err(BadLen));
     }
 
     #[test]
     fn trailing_comma_and_some_string() {
         assert_eq!(
             "John,32,man".parse::<Person>(),
-            Err(ParsePersonError::BadLen)
+            Err(BadLen)
         );
     }
 }
